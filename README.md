@@ -13,6 +13,7 @@
   - interactive prompt: `Show more from this article? [y/N]`
   - CLI flag: `--more` or `-m`
 - Preserves paragraph breaks in extended content for easier reading
+- Paginates extended content in interactive terminals using your pager (`$PAGER`, default: `less -R`)
 
 ## Requirements
 
@@ -20,6 +21,7 @@
 - `make`
 - `curl`
 - Internet connection
+- `less` (recommended for interactive pagination)
 
 ## Build
 
@@ -72,13 +74,12 @@ ARTICLE
                               manwiki  2026-05-07
 
 MORE
-    Alan Mathison Turing (...) was an English mathematician, computer scientist,
-    logician, cryptanalyst, philosopher and theoretical biologist...
+    (opens in pager: $PAGER or less -R)
+    - Forward: Space / f
+    - Backward: b
+    - Search: /term
+    - Quit: q
 
-    Born in London, Turing was raised in southern England...
-
-    After the war, Turing worked at the National Physical Laboratory...
-...
 ```
 
 ## Clean

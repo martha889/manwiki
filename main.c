@@ -111,6 +111,71 @@ static void print_wrapped(const char *text, int width, int indent) {
     }
 }
 
+static void print_wrapped_to_file(FILE *out, const char *text, int width, int indent) {
+    if (!text) {
+        return;
+    }
+
+    const char *p = text;
+    while (*p) {
+        int newline_count = 0;
+        while (*p == '\n') {
+            newline_count++;
+            p++;
+        }
+        if (newline_count > 0) {
+            fputc('\n', out);
+        }
+        if (!*p) {
+            break;
+        }
+
+        const char *line_end = p;
+        while (*line_end && *line_end != '\n') {
+            line_end++;
+        }
+
+        int col = indent;
+        for (int i = 0; i < indent; i++) {
+            fputc(' ', out);
+        }
+
+        const char *cursor = p;
+        while (cursor < line_end) {
+            while (cursor < line_end && (*cursor == ' ' || *cursor == '\t')) {
+                cursor++;
+            }
+            if (cursor >= line_end) {
+                break;
+            }
+
+            const char *w = cursor;
+            while (cursor < line_end && *cursor != ' ' && *cursor != '\t') {
+                cursor++;
+            }
+            int wlen = (int)(cursor - w);
+
+            if (col > indent && col + 1 + wlen > width) {
+                fputc('\n', out);
+                for (int i = 0; i < indent; i++) {
+                    fputc(' ', out);
+                }
+                fwrite(w, 1, (size_t)wlen, out);
+                col = indent + wlen;
+            } else {
+                if (col > indent) {
+                    fputc(' ', out);
+                    col++;
+                }
+                fwrite(w, 1, (size_t)wlen, out);
+                col += wlen;
+            }
+        }
+        fputc('\n', out);
+        p = line_end;
+    }
+}
+
 static void print_wrapped_flat(const char *text, int width, int indent) {
     if (!text) {
         return;
@@ -342,6 +407,28 @@ static char *fetch_full_extract(const char *query) {
     return extract;
 }
 
+static void print_more_section(const char *text) {
+    int width = terminal_width();
+    if (width > 140) {
+        width = 140;
+    }
+
+    if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+        const char *pager = getenv("PAGER");
+        const char *pager_cmd = (pager && *pager) ? pager : "less -R";
+        FILE *pf = popen(pager_cmd, "w");
+        if (pf) {
+            fputs("MORE\n", pf);
+            print_wrapped_to_file(pf, text, width, 4);
+            pclose(pf);
+            return;
+        }
+    }
+
+    puts("\nMORE");
+    print_wrapped(text, width, 4);
+}
+
 static void print_man_layout(const Article *a, const char *argv0) {
     int width = terminal_width();
     if (width > 140) {
@@ -420,11 +507,9 @@ int main(int argc, char **argv) {
     if (want_more) {
         char *full = fetch_full_extract(query);
         if (full && strcmp(full, a.extract) != 0) {
-            puts("\nMORE");
-            print_wrapped(full, terminal_width() > 140 ? 140 : terminal_width(), 4);
+            print_more_section(full);
         } else {
-            puts("\nMORE");
-            print_wrapped("No additional article text available.", terminal_width() > 140 ? 140 : terminal_width(), 4);
+            print_more_section("No additional article text available.");
         }
         free(full);
     }
